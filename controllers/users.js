@@ -7,10 +7,14 @@ const {
 } = require('../utils/errors');
 
 const userDataUpdate = (req, res, updateData) => {
-  User.findByIdAndUpdate(req.user._id, updateData, {
-    new: true,
-    runValidators: true,
-  })
+  User.findByIdAndUpdate(
+    req.user._id,
+    updateData,
+    {
+      new: true,
+      runValidators: true,
+    },
+  )
     .then((user) => {
       if (user) {
         res.send({
@@ -34,7 +38,6 @@ const userDataUpdate = (req, res, updateData) => {
       }
     });
 };
-
 module.exports.getAllUsers = (req, res) => {
   User.find({})
     .then((users) => res.send({
@@ -44,7 +47,6 @@ module.exports.getAllUsers = (req, res) => {
       message: 'Произошла ошибка',
     }));
 };
-
 module.exports.getUserById = (req, res) => {
   User.findById(req.params.userId)
     .then((user) => {
@@ -70,9 +72,12 @@ module.exports.getUserById = (req, res) => {
       }
     });
 };
-
 module.exports.createUser = (req, res) => {
-  const { name, about, avatar } = req.body;
+  const {
+    name,
+    about,
+    avatar,
+  } = req.body;
   User.create({
     name,
     about,
@@ -93,7 +98,6 @@ module.exports.createUser = (req, res) => {
       }
     });
 };
-
 module.exports.updateUser = (req, res) => {
   const { name, about } = req.body;
   userDataUpdate(req, res, { name, about });

@@ -1,5 +1,4 @@
 const Card = require('../models/card');
-
 const {
   ERROR_BAD_DATA,
   ERROR_NOT_FOUND,
@@ -18,9 +17,16 @@ module.exports.getAllCards = (req, res) => {
 };
 
 module.exports.createCard = (req, res) => {
-  const { name, link } = req.body;
+  const {
+    name,
+    link,
+  } = req.body;
   const owner = req.user._id;
-  Card.create({ name, link, owner })
+  Card.create({
+    name,
+    link,
+    owner,
+  })
     .then((card) => {
       card.populate('owner')
         .then((newCard) => res.status(200).send(newCard))
@@ -31,7 +37,7 @@ module.exports.createCard = (req, res) => {
     .catch((err) => {
       if (err.name === 'ValidationError') {
         res.status(ERROR_BAD_DATA).send({
-          message: 'Переданы некорректные данные карточки',
+          message: 'Переданы некорректные данные карточки.',
         });
       } else {
         res.status(ERROR_DEFAULT).send({
@@ -43,8 +49,13 @@ module.exports.createCard = (req, res) => {
 
 module.exports.deleteCard = (req, res) => {
   const owner = req.user._id;
-  const { cardId } = req.params;
-  Card.findByIdAndRemove({ owner, _id: cardId })
+  const {
+    cardId,
+  } = req.params;
+  Card.findByIdAndRemove({
+    owner,
+    _id: cardId,
+  })
     .then((card) => {
       if (card) {
         res.send({
@@ -56,10 +67,11 @@ module.exports.deleteCard = (req, res) => {
         });
       }
     })
+
     .catch((err) => {
       if (err.name === 'CastError') {
         res.status(ERROR_BAD_DATA).send({
-          message: 'Переданы некорректные данные карточки',
+          message: 'Переданы некорректные данные карточки.',
         });
       } else {
         res.status(ERROR_DEFAULT).send({
@@ -133,7 +145,7 @@ module.exports.dislikeCard = (req, res) => {
     .catch((err) => {
       if (err.name === 'CastError') {
         res.status(ERROR_BAD_DATA).send({
-          message: 'Переданы некорректные данные карточки',
+          message: 'Переданы некорректные данные карточки.',
         });
       } else {
         res.status(ERROR_DEFAULT).send({
