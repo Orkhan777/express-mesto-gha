@@ -10,16 +10,14 @@ const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(userRouter);
-app.use(cardRouter);
-
 app.use((req, res, next) => {
   req.user = {
     _id: '64a4379362715421569a44f1',
   };
   next();
 });
-
+app.use(userRouter);
+app.use(cardRouter);
 app.all('*', (req, res) => {
   res.status(ERROR_NOT_FOUND).send({ message: 'Страница не найдена' });
 });
