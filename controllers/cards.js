@@ -29,7 +29,7 @@ module.exports.createCard = (req, res) => {
   })
     .then((card) => {
       card.populate('owner')
-        .then((newCard) => res.status(200).send(newCard))
+        .then((newCard) => res.status(201).send(newCard))
         .catch(() => res.status(ERROR_DEFAULT).send({
           message: 'Произошла ошибка',
         }));

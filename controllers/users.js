@@ -38,6 +38,7 @@ const userDataUpdate = (req, res, updateData) => {
       }
     });
 };
+
 module.exports.getAllUsers = (req, res) => {
   User.find({})
     .then((users) => res.send({
@@ -72,6 +73,7 @@ module.exports.getUserById = (req, res) => {
       }
     });
 };
+
 module.exports.createUser = (req, res) => {
   const {
     name,
@@ -83,7 +85,7 @@ module.exports.createUser = (req, res) => {
     about,
     avatar,
   })
-    .then((user) => res.send({
+    .then((user) => res.status(201).send({
       data: user,
     }))
     .catch((err) => {
@@ -98,6 +100,7 @@ module.exports.createUser = (req, res) => {
       }
     });
 };
+
 module.exports.updateUser = (req, res) => {
   const { name, about } = req.body;
   userDataUpdate(req, res, { name, about });
