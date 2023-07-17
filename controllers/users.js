@@ -1,102 +1,90 @@
 const mongoose = require('mongoose');
-const User = require('../models/user');
-const {
-  ERROR_BAD_DATA,
-  ERROR_NOT_FOUND,
-  ERROR_DEFAULT,
-} = require('../utils/errors');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
-const userDataUpdate = (req, res, updateData) => {
-  User.findByIdAndUpdate(
-    req.user._id,
-    updateData,
-    {
-      new: true,
-      runValidators: true,
-    },
-  )
+const { JWT_SECRET, NODE_ENV } = process.env;
+const User = require('../models/user');
+const NotFoundError = require('../errors/NotFoundError');
+const BadDataError = require('../errors/BadDataError');
+const ConflictError = require('../errors/ConflictError');
+
+const userDataUpdate = (req, res, updateData, next) => {
+  User.findByIdAndUpdate(req.user._id, updateData, {
+    new: true,
+    runValidators: true,
+  })
     .then((user) => {
-      if (user) {
-        res.send({
-          data: user,
-        });
-      } else {
-        res.status(ERROR_NOT_FOUND).send({
-          message: 'Пользователь не найден',
-        });
+      if (user) res.send({ data: user });
+      else {
+        next(new NotFoundError('Пользователь не найден'));
       }
     })
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
-        res.status(ERROR_BAD_DATA).send({
-          message: 'Переданы некорректные данные пользователя.',
-        });
+        next(new BadDataError('Переданы некорректные данные.'));
       } else {
-        res.status(ERROR_DEFAULT).send({
-          message: 'Произошла ошибка',
-        });
+        next(err);
       }
     });
 };
 
-module.exports.getAllUsers = (req, res) => {
-  User.find({})
-    .then((users) => res.send({
-      data: users,
-    }))
-    .catch(() => res.status(ERROR_DEFAULT).send({
-      message: 'Произошла ошибка',
-    }));
-};
-module.exports.getUserById = (req, res) => {
-  User.findById(req.params.userId)
+const getUserData = (userData, req, res, next) => {
+  User.findById(userData)
     .then((user) => {
       if (user) {
-        res.send({
-          data: user,
-        });
+        res.send({ data: user });
       } else {
-        res.status(ERROR_NOT_FOUND).send({
-          message: 'Пользователь не найден',
-        });
+        next(new NotFoundError('Пользователь по указанному id не найден'));
       }
     })
     .catch((err) => {
       if (err instanceof mongoose.Error.CastError) {
-        res.status(ERROR_BAD_DATA).send({
-          message: 'Переданы некорректные данные пользователя.',
-        });
+        next(new BadDataError('Переданы некорректные данные'));
       } else {
-        res.status(ERROR_DEFAULT).send({
-          message: 'Произошла ошибка',
-        });
+        next(err);
       }
     });
 };
 
-module.exports.createUser = (req, res) => {
+module.exports.getAllUsers = (req, res, next) => {
+  User.find({})
+    .then((users) => res.send({ data: users }))
+    .catch(next);
+};
+
+module.exports.getUser = (req, res, next) => {
+  getUserData(req.user._id, req, res, next);
+};
+
+module.exports.getUserById = (req, res, next) => {
+  getUserData(req.params.userId, req, res, next);
+};
+
+module.exports.createUser = (req, res, next) => {
   const {
-    name,
-    about,
-    avatar,
+    name, about, avatar, email, password,
   } = req.body;
-  User.create({
-    name,
-    about,
-    avatar,
-  })
-    .then((user) => res.status(201).send({
-      data: user,
+  bcrypt
+    .hash(password, 10)
+    .then((hash) => User.create({
+      name,
+      about,
+      avatar,
+      email,
+      password: hash,
     }))
+    .then((user) => {
+      const dataUser = user.toObject();
+      delete dataUser.password;
+      res.status(200).send(dataUser);
+    })
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
-        res.status(ERROR_BAD_DATA).send({
-          message: 'Переданы некорректные данные пользователя.',
-        });
+        next(new BadDataError('Переданы некорректные данные'));
+      } else if (err.code === 11000) {
+        next(new ConflictError('Данный email уже зарегистрирован'));
       } else {
-        res.status(ERROR_DEFAULT).send({
-          message: 'Произошла ошибка',
-        });
+        next(err);
       }
     });
 };
@@ -109,4 +97,23 @@ module.exports.updateUser = (req, res) => {
 module.exports.updateAvatar = (req, res) => {
   const { avatar } = req.body;
   userDataUpdate(req, res, { avatar });
+};
+
+module.exports.login = (req, res, next) => {
+  const { email, password } = req.body;
+  User.findUserByCredentials(email, password)
+    .then((user) => {
+      const token = jwt.sign(
+        { _id: user._id },
+        NODE_ENV === 'production' ? JWT_SECRET : 'dev-secret',
+        { expiresIn: '7d' },
+      );
+      res.cookie('jwt', token, {
+        maxAge: 3600000 * 24 * 7,
+        httpOnly: true,
+        sameSite: true,
+      });
+      res.status(200).send({ message: 'Успешный вход' });
+    })
+    .catch(next);
 };

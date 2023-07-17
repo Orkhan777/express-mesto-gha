@@ -1,30 +1,27 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
-const bodyParser = require('body-parser');
+const { errors } = require('celebrate');
+const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
-const userRouter = require('./routes/users');
-const cardRouter = require('./routes/cards');
-const { ERROR_NOT_FOUND } = require('./utils/errors');
+const rootRoute = require('./routes/index');
+const genErrorHandler = require('./middlewares/genErrorHandler');
+const limiter = require('./middlewares/limiter');
 
-const { PORT = 3000, DB_URL = 'mongodb://127.0.0.1:27017/mestodb' } = process.env;
+const { PORT = 3000 } = process.env;
 const app = express();
-app.use(helmet());
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use((req, res, next) => {
-  req.user = {
-    _id: '64a4379362715421569a44f1',
-  };
-  next();
-});
-app.use(userRouter);
-app.use(cardRouter);
-app.all('*', (req, res) => {
-  res.status(ERROR_NOT_FOUND).send({ message: 'Страница не найдена' });
-});
-
-mongoose.connect(DB_URL, {
+mongoose.connect('mongodb://127.0.0.1:27017/mestodb', {
   useNewUrlParser: true,
 });
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(helmet());
+app.use(limiter);
+app.use('/', rootRoute);
+app.use(errors());
+app.use(genErrorHandler);
+
 app.listen(PORT);
