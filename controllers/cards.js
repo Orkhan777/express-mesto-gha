@@ -31,7 +31,7 @@ module.exports.createCard = (req, res, next) => {
   const { name, link } = req.body;
   const owner = req.user._id;
   Card.create({ name, link, owner })
-    .then((newCard) => res.status(200).send(newCard))
+    .then((newCard) => res.status(201).send(newCard))
     .catch((err) => {
       if (err instanceof mongoose.Error.ValidationError) {
         next(new BadDataError('Переданы некорректные данные'));
@@ -47,21 +47,20 @@ module.exports.deleteCard = (req, res, next) => {
   Card.findById(cardId)
     .then((card) => {
       if (!card) {
-        next(new NotFoundError('Карточка не найдена'));
+        return next(new NotFoundError('Карточка не найдена'));
       }
       if (String(card.owner) !== owner) {
-        next(new ForbiddenError('Вы не можете удалить чужую карточку'));
+        return next(new ForbiddenError('Вы не можете удалить чужую карточку'));
       }
-      return Card.findByIdAndRemove(cardId)
-        .then((delCard) => res.status(200).send({ data: delCard }))
+      return card.deleteOne()
+        .then(() => res.status(201).send({ message: 'Карточка успешно удалена' }))
         .catch(next);
     })
     .catch((err) => {
       if (err instanceof mongoose.Error.CastError) {
-        next(new BadDataError('Переданы некорректные данные'));
-      } else {
-        next(err);
+        return next(new BadDataError('Переданы некорректные данные'));
       }
+      return next(err);
     });
 };
 
